@@ -1,0 +1,66 @@
+/************Oracle Performance ***************/
+/*********************************************
+As of Oracle 10g, the relevant relationship between Busy Waits and CPU time for all user processes can be easily determined from V$SYS_TIME_MODEL.
+
+SELECT
+  ROUND((STM1.VALUE - STM2.VALUE) / 1000000) "BUSY WAIT TIME (S)",
+  ROUND(STM2.VALUE / 1000000) "CPU TIME (S)",
+  ROUND((STM1.VALUE - STM2.VALUE) / STM1.VALUE * 100) || ' : ' ||
+    ROUND(STM2.VALUE / STM1.VALUE * 100) RATIO
+FROM V$SYS_TIME_MODEL STM1, V$SYS_TIME_MODEL STM2
+WHERE STM1.STAT_NAME = 'DB time' AND STM2.STAT_NAME = 'DB CPU';
+*********************************************/
+
+/*********************************************
+Oracle allows access to performance data using special V$-Views. Including:
+
+V$SYSTEM_EVENT: Totaling of all queue events
+desc V$SYSTEM_EVENT
+V$SYSSTAT: Statistics values for the entire system
+desc V$SYSSTAT
+V$SESSION_EVENT: Totaling of the queue events per session
+desc V$SESSION_EVENT
+V$SESSION_WAIT: Current queue events per session
+desc V$SESSION_WAIT
+V$SESSTAT: Statistics values per session
+desc V$SESSTAT
+V$FILESTAT: File system accesses
+desc V$FILESTAT
+V$LATCH: Latch information
+desc V$LATCH
+V$WAITSTAT: Information about Buffer Busy Waits
+desc V$WAITSTAT
+*********************************************/
+
+/*********************************************
+If there is always a large amount of free space in the Shared Pool, you can reduce the size of the Shared Pool. The current free space can be determined as follows:
+SELECT BYTES FROM V$SGASTAT
+WHERE POOL = 'shared pool' AND NAME = 'free memory';
+*********************************************/
+
+/*********************************************
+UNUSABLE Indexes
+As of Oracle 10g, indexes that have the status UNUSABLE can be ignored by the CBO due to SKIP_UNUSABLE_INDEXES = TRUE (previously, a termination occurred with ORA-01502). Therefore, these indexes may result in performance problems. Use the following statements to check whether there are UNUSABLE indexes in the database:
+SELECT OWNER, INDEX_NAME
+FROM DBA_INDEXES
+WHERE STATUS = 'UNUSABLE';
+
+SELECT INDEX_OWNER, INDEX_NAME, PARTITION_NAME
+FROM DBA_IND_PARTITIONS
+WHERE STATUS = 'UNUSABLE';
+*********************************************/
+
+/*********************************************
+Long Ops view
+SELECT
+  SID,
+  SUBSTR(OPNAME, 1, 15) OPERATION,
+  SUBSTR(TARGET, 1, 20) OBJECT,
+  SOFAR,
+  TOTALWORK,
+  TIME_REMAINING "REMAINING"
+FROM V$SESSION_LONGOPS
+WHERE
+  SOFAR < TOTALWORK AND
+  LAST_UPDATE_TIME > SYSDATE - 1 / 24 / 60;
+*****************************************************/

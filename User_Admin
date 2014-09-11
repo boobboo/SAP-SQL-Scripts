@@ -1,0 +1,35 @@
+/************MS SQL Script for operations ***************/
+/**********Unlock a user**********
+update sap<sid>.usr02
+set uflag = '0'
+where bname = '<username>' and mandt = '<client number>';
+**********************************/
+/**********Unlock SAPStar**********
+update sap<sid>.usr02
+set bname = 'SAP*_OLD'
+where bname = 'SAP*' and mandt = '<client number>';
+**********************************/
+
+/************DB2 SQL Script for operations ***************/
+/**********Unlock a user**********
+db2 “update <schema_name>.usr02 
+set uflag=’0′ 
+where bname=‘<user_name>’“
+**********************************/
+/**********Unlock SAPStar**********
+update sap<sid>.usr02
+set bname = 'SAP*_OLD'
+where bname = 'SAP*' and mandt = '<client number>';
+**********************************/
+
+/************Oracle SQL Script for operations ***************/
+/**********Unlock a user**********
+update sap<sid>.usr02 
+set uflag=’0′ 
+where bname=‘<user_name>’;
+**********************************/
+/**********Unlock SAPStar**********
+update sap<sid>.usr02
+set bname = 'SAP*_OLD'
+where bname = 'SAP*' and mandt = '<client number>';
+**********************************/

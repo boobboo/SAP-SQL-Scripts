@@ -1,0 +1,114 @@
+setlocal
+REM +--------------------------------------------------------------------------+
+REM | VALIDATE COMMAND-LINE PARAMETERS                                         |
+REM +--------------------------------------------------------------------------+
+
+REM if (%1)==() goto USAGE
+REM if (%2)==() goto USAGE
+REM if (%3)==() goto USAGE
+
+
+REM +--------------------------------------------------------------------------+
+REM | VALIDATE ENVIRONMENT VARIABLES                                           |
+REM +--------------------------------------------------------------------------+
+
+set ORALOG=C:\temp
+set ORATMP=C:\temp
+set ORASCRIPT=C:\scripts
+
+REM +--------------------------------------------------------------------------+
+REM | DECLARE ALL GLOBAL VARIABLES.                                            |
+REM +--------------------------------------------------------------------------+
+
+set FILENAME=rman_backup_hot_full
+set DB_USERNAME=%1%
+set DB_PASSWORD=%2%
+set TNS_ALIAS=BOS
+set CMDFILE=%ORATMP%\%FILENAME%_%TNS_ALIAS%.rcv
+set LOGFILE=%ORALOG%\%FILENAME%_%TNS_ALIAS%.log
+set BACKUPSQL=%ORASCRIPT%\backup_list.sql
+set BACKUPLIST=%ORALOG%\backup_list.log
+
+set NSR_SERVER=gbdoxpr-bus005b1
+set NSR_DATA_VOLUME_POOL=Default
+set NSR_GROUP=DB_SA_BOBJ
+set NSR_CLIENT=gbwynppbjs1v
+
+REM +--------------------------------------------------------------------------+
+REM | WRITE RMAN COMMAND SCRIPT.                                               |
+REM +--------------------------------------------------------------------------+
+
+echo run { > %CMDFILE%
+echo ALLOCATE CHANNEL c1 DEVICE TYPE sbt_tape parms 'ENV=(NSR_SERVER=%NSR_SERVER%,NSR_DATA_VOLUME_POOL=%NSR_DATA_VOLUME_POOL%,NSR_GROUP=%NSR_GROUP%,NSR_CLIENT=%NSR_CLIENT%)'; >> %CMDFILE%
+echo ALLOCATE CHANNEL c2 DEVICE TYPE sbt_tape parms 'ENV=(NSR_SERVER=%NSR_SERVER%,NSR_DATA_VOLUME_POOL=%NSR_DATA_VOLUME_POOL%,NSR_GROUP=%NSR_GROUP%,NSR_CLIENT=%NSR_CLIENT%)'; >> %CMDFILE%
+echo backup database plus archivelog; >> %CMDFILE%
+echo } >> %CMDFILE%
+echo ALLOCATE CHANNEL FOR MAINTENANCE DEVICE TYPE sbt_tape parms 'ENV=(NSR_SERVER=%NSR_SERVER%,NSR_DATA_VOLUME_POOL=%NSR_DATA_VOLUME_POOL%,NSR_GROUP=%NSR_GROUP%,NSR_CLIENT=%NSR_CLIENT%)'; >> %CMDFILE%
+echo delete noprompt archivelog all backed up 2 times to device type SBT_TAPE; >> %CMDFILE%
+echo backup current controlfile; >> %CMDFILE%
+echo crosscheck backup of database; >> %CMDFILE%
+echo crosscheck backup of controlfile; >> %CMDFILE%
+echo crosscheck archivelog all; >> %CMDFILE%
+echo delete noprompt force obsolete;>> %CMDFILE%
+echo delete force noprompt expired backup of database; >> %CMDFILE%
+echo delete force noprompt expired backup of controlfile; >> %CMDFILE%
+echo delete force noprompt expired archivelog all; >> %CMDFILE%
+echo exit; >> %CMDFILE%
+
+
+REM +--------------------------------------------------------------------------+
+REM | PERFORM RMAN BACKUP.                                                     |
+REM +--------------------------------------------------------------------------+
+
+rman target '/ as sysdba' nocatalog cmdfile=%CMDFILE% msglog %LOGFILE% 
+sqlplus / as sysdba @%BACKUPSQL% >%BACKUPLIST%
+
+REM +--------------------------------------------------------------------------+
+REM | SCAN THE RMAN LOGFILE FOR ERRORS.                                        |
+REM +--------------------------------------------------------------------------+
+
+findstr /i "error" %LOGFILE%
+if errorlevel 0 if not errorlevel 1 echo WARNING %FILENAME% %TNS_ALIAS% %COMPUTERNAME% %DATE% %TIME% %LOGFILE%
+
+echo ...
+echo END OF FILE REPORT
+echo Filename      : %FILENAME%
+echo Database      : %TNS_ALIAS%
+echo Hostname      : %COMPUTERNAME%
+echo Date          : %DATE%
+echo Time          : %TIME%
+echo RMAN Log File : %LOGFILE%
+
+
+REM +--------------------------------------------------------------------------+
+REM | END THIS SCRIPT.                                                         |
+REM +--------------------------------------------------------------------------+
+
+goto END
+
+
+
+REM +==========================================================================+
+REM |                    ***   END OF SCRIPT   ***                             |
+REM +==========================================================================+
+
+REM +--------------------------------------------------------------------------+
+REM | LABEL DECLARATION SECTION.                                               |
+REM +--------------------------------------------------------------------------+
+
+REM :USAGE
+REM echo Usage:  rman_backup_hot_full_9i.bat  DBA_USERNAME  DBA_PASSWORD  TNS_ALIAS
+REM echo           DBA_USERNAME   = Oracle DBA Username - (Requires SYSDBA Role)
+REM echo           DBA_PASSWORD   = Oracle DBA Password
+REM echo           TNS_ALIAS      = Connect String to connect to the database (ex. ORCL)
+REM goto END
+
+REM :ENV_VARIABLES
+REM echo ERROR:  You must set the following environment variables before
+REM echo         running this script:
+REM echo             ORALOG       = Directory used to write logfile to
+REM echo             ORATMP       = Directory used to write temporary files to
+REM goto END
+
+:END
+endlocal
